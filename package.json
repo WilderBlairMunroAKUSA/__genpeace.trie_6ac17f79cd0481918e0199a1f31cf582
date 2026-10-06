@@ -1,0 +1,20 @@
+{
+  "name": "genpeace.trie",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "𐂷 Encounter-bound peace process transparencies, with Lens and Chorder MV3 archetypes",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "build": "node scripts/build.js",
+    "preview": "node scripts/serve.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "fake-indexeddb": "^6.2.5",
+    "jsdom": "^26.1.0"
+  }
+}

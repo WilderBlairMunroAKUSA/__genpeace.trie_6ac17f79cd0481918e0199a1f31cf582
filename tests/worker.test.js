@@ -1,0 +1,14 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {indexedDB} from 'fake-indexeddb';
+globalThis.indexedDB=indexedDB;
+let listener;
+globalThis.chrome={runtime:{id:'test',getURL:path=>'chrome-extension://test/'+path,onMessage:{addListener:fn=>listener=fn}},commands:{onCommand:{addListener(){}}},tabs:{create:async()=>({id:1})}};
+await import('../src/background.js');
+const from=url=>({id:'test',url,tab:{id:1},frameId:0});
+const request=(type,sender,data={})=>new Promise(resolve=>listener({scope:'genpeace',type,...data},sender,resolve));
+const scan=(url,text)=>({url,title:text,blocks:[{text,tag:'p',path:'p:0',rect:{x:0,y:0,width:10,height:10},lines:[]}],viewport:{width:10,height:10},extent:{height:10},coverage:{truncated:false}});
+test('worker scopes page archive reads to sender source',async()=>{const a='https://a.example/page',b='https://b.example/page';assert.equal((await request('capture',from(a),{scan:scan(a,'A')})).ok,true);assert.equal((await request('capture',from(b),{scan:scan(b,'B')})).ok,true);const state=await request('state',from(a));assert.equal(state.value.pieces.length,1);assert.equal(state.value.pieces[0].body.source,a);assert.equal(state.value.events.length,1);});
+test('worker refuses spoofed source and subframe captures',async()=>{assert.equal((await request('capture',from('https://a.example'),{scan:scan('https://b.example','spoof')})).ok,false);assert.equal((await request('capture',{...from('https://a.example'),frameId:2},{scan:scan('https://a.example','iframe')})).ok,false);});
+test('extension archive remains privileged when browser supplies tab metadata',async()=>{const s=await request('state',{id:'test',url:'chrome-extension://test/ui/workbench.html',tab:{id:20}});assert.equal(s.ok,true);assert.ok(s.value.pieces.some(p=>p.kind==='text'));});
+test('page cannot annotate a different source or produce archive recipes',async()=>{const own=await request('capture',from('https://owner.example'),{scan:scan('https://owner.example','private')});const other=from('https://other.example');assert.equal((await request('annotate',other,{encounterId:own.value.id,index:0,text:'wrong source'})).ok,false);assert.equal((await request('produce',other,{encounterId:own.value.id})).ok,false);});
